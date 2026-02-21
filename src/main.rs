@@ -13,6 +13,7 @@ const PINK_RED: u8 = 203;
 
 // Icons
 const CONTEXT_ICON: &str = "🧠";
+const COST_ICON: &str = "💰";
 const MODEL_ICON: &str = "🤖";
 const TOKENS_ICON: &str = "🪙";
 
@@ -23,6 +24,7 @@ const CONTEXT_THRESHOLD_MEDIUM: i32 = 70;
 #[derive(Deserialize)]
 #[serde(from = "RawClaudeStatusLineData")]
 struct ClaudeStatusLineData {
+    cost: Amount,
     model: Model,
     percentage: Percentage,
     tokens: Tokens,
@@ -30,18 +32,21 @@ struct ClaudeStatusLineData {
 
 impl fmt::Display for ClaudeStatusLineData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let cost = self.cost;
         let model = &self.model;
         let percentage = self.percentage;
         let tokens = self.tokens;
 
-        write!(f, "{model} | {percentage} | {tokens}")
+        write!(f, "{model} | {percentage} | {tokens} | {cost}")
     }
 }
 
 impl From<RawClaudeStatusLineData> for ClaudeStatusLineData {
     fn from(raw: RawClaudeStatusLineData) -> Self {
         let context = raw.context_window.unwrap_or_default();
+        let cost = raw.cost.unwrap_or_default();
         Self {
+            cost: cost.amount,
             model: raw.model,
             percentage: context.percentage,
             tokens: context.tokens,
@@ -51,6 +56,7 @@ impl From<RawClaudeStatusLineData> for ClaudeStatusLineData {
 
 #[derive(Deserialize)]
 struct RawClaudeStatusLineData {
+    cost: Option<Cost>,
     context_window: Option<ContextWindow>,
     model: Model,
 }
@@ -61,6 +67,25 @@ struct ContextWindow {
     percentage: Percentage,
     #[serde(flatten)]
     tokens: Tokens,
+}
+
+#[derive(Deserialize, Default)]
+struct Cost {
+    #[serde(flatten)]
+    amount: Amount,
+}
+
+#[derive(Deserialize, Default, Clone, Copy)]
+struct Amount {
+    total_cost_usd: Option<f64>,
+}
+
+impl fmt::Display for Amount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let cost = self.total_cost_usd.unwrap_or_default();
+
+        write!(f, "{COST_ICON} ${cost:.2}")
+    }
 }
 
 #[derive(Deserialize)]
@@ -131,8 +156,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn cost_output() {
+        let cost = Amount {
+            total_cost_usd: Some(1.0),
+        };
+
+        let output = format!("{cost}");
+        assert!(output.contains(COST_ICON));
+        assert!(output.contains("$1.00"));
+    }
+
+    #[test]
     fn default_output() {
         let data = ClaudeStatusLineData {
+            cost: Amount::default(),
             // Unlike the other fields, this one is required and has no default.
             model: Model {
                 display_name: "Model Display Name".to_string(),
@@ -143,11 +180,20 @@ mod tests {
 
         let output = format!("{data}");
         assert!(output.contains(" 0%"));
+        // TODO: We can't include a space here because the color code appears between the space and
+        // the 0. It's unnecessary from a display perspective, but maybe the icons should be
+        // included in the painted text.
+        assert!(output.contains("0↑"));
+        assert!(output.contains(" 0↓"));
+        assert!(output.contains("$0.00"));
     }
 
     #[test]
     fn full_output() {
         let data = ClaudeStatusLineData {
+            cost: Amount {
+                total_cost_usd: Some(50.0),
+            },
             model: Model {
                 display_name: "Model Display Name".to_string(),
             },
@@ -168,6 +214,8 @@ mod tests {
         assert!(output.contains(TOKENS_ICON));
         assert!(output.contains("5↑"));
         assert!(output.contains("10↓"));
+        assert!(output.contains(COST_ICON));
+        assert!(output.contains("$50.00"));
     }
 
     #[test]
