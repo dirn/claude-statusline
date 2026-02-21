@@ -7,6 +7,7 @@ use serde::Deserialize;
 // Colors
 const BRIGHT_GREEN: u8 = 46;
 const BRIGHT_YELLOW: u8 = 226;
+const LAVENDAR: u8 = 141;
 const MAGENTA_PINK: u8 = 213;
 const ORANGE: u8 = 208;
 const PINK_RED: u8 = 203;
@@ -83,8 +84,9 @@ struct Amount {
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let cost = self.total_cost_usd.unwrap_or_default();
+        let cost = Color::Fixed(LAVENDAR).paint(format!("${cost:.2}"));
 
-        write!(f, "{COST_ICON} ${cost:.2}")
+        write!(f, "{COST_ICON} {cost}")
     }
 }
 
