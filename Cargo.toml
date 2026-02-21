@@ -1,0 +1,11 @@
+[package]
+name = "claude-statusline"
+version = "0.1.0"
+authors = ["Andy Dirnberger <andy.dirnberger@gmail.com>"]
+edition = "2024"
+description = "A customized statusline for Claude Code"
+readme = "README.md"
+repository = "https://github.com/dirn/claude-statusline"
+license = "MIT"
+
+[dependencies]
