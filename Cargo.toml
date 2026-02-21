@@ -10,5 +10,6 @@ license = "MIT"
 
 [dependencies]
 ansi_term = "0.12.1"
+millisecond = "0.15.12"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
