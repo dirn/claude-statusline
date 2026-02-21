@@ -21,37 +21,46 @@ const CONTEXT_THRESHOLD_HIGH: i32 = 80; // Auto-compaction seems to kick in arou
 const CONTEXT_THRESHOLD_MEDIUM: i32 = 70;
 
 #[derive(Deserialize)]
+#[serde(from = "RawClaudeStatusLineData")]
 struct ClaudeStatusLineData {
-    context_window: Option<ContextWindow>,
     model: Model,
+    percentage: Percentage,
+    tokens: Tokens,
 }
 
 impl fmt::Display for ClaudeStatusLineData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let model = &self.model;
-        let percentage = self.context_window.clone().unwrap_or_default().percentage();
-        let tokens = self.context_window.clone().unwrap_or_default().tokens();
+        let percentage = self.percentage;
+        let tokens = self.tokens;
 
         write!(f, "{model} | {percentage} | {tokens}")
     }
 }
 
-#[derive(Deserialize, Default, Clone)]
+impl From<RawClaudeStatusLineData> for ClaudeStatusLineData {
+    fn from(raw: RawClaudeStatusLineData) -> Self {
+        let context = raw.context_window.unwrap_or_default();
+        Self {
+            model: raw.model,
+            percentage: context.percentage,
+            tokens: context.tokens,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct RawClaudeStatusLineData {
+    context_window: Option<ContextWindow>,
+    model: Model,
+}
+
+#[derive(Deserialize, Default)]
 struct ContextWindow {
     #[serde(flatten)]
     percentage: Percentage,
     #[serde(flatten)]
     tokens: Tokens,
-}
-
-impl ContextWindow {
-    fn percentage(&self) -> Percentage {
-        self.percentage
-    }
-
-    fn tokens(&self) -> Tokens {
-        self.tokens
-    }
 }
 
 #[derive(Deserialize)]
@@ -124,11 +133,12 @@ mod tests {
     #[test]
     fn default_output() {
         let data = ClaudeStatusLineData {
-            context_window: None,
-            // This field is required.
+            // Unlike the other fields, this one is required and has no default.
             model: Model {
                 display_name: "Model Display Name".to_string(),
             },
+            percentage: Percentage::default(),
+            tokens: Tokens::default(),
         };
 
         let output = format!("{data}");
@@ -138,17 +148,15 @@ mod tests {
     #[test]
     fn full_output() {
         let data = ClaudeStatusLineData {
-            context_window: Some(ContextWindow {
-                percentage: Percentage {
-                    used_percentage: Some(20.0),
-                },
-                tokens: Tokens {
-                    total_input_tokens: Some(5),
-                    total_output_tokens: Some(10),
-                },
-            }),
             model: Model {
                 display_name: "Model Display Name".to_string(),
+            },
+            percentage: Percentage {
+                used_percentage: Some(20.0),
+            },
+            tokens: Tokens {
+                total_input_tokens: Some(5),
+                total_output_tokens: Some(10),
             },
         };
 
@@ -171,6 +179,9 @@ mod tests {
 
         let data: ClaudeStatusLineData = serde_json::from_str(json).unwrap();
         assert_eq!("Sonnet 4.5", data.model.display_name);
+        assert_eq!(Some(1.0), data.percentage.used_percentage);
+        assert_eq!(Some(10), data.tokens.total_input_tokens);
+        assert_eq!(Some(5), data.tokens.total_output_tokens);
     }
 
     #[test]
