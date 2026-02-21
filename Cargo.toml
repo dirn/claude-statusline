@@ -1,6 +1,6 @@
 [package]
 name = "claude-statusline"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Andy Dirnberger <andy.dirnberger@gmail.com>"]
 edition = "2024"
 description = "A customized statusline for Claude Code"
