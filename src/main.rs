@@ -1,9 +1,13 @@
+mod config;
+
 use std::fmt;
 use std::io;
 
 use ansi_term::Color;
 use millisecond::prelude::*;
 use serde::Deserialize;
+
+use config::get_config;
 
 // Colors
 const BRIGHT_GREEN: u8 = 46;
@@ -91,10 +95,14 @@ struct Amount {
 
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let cost = self.total_cost_usd.unwrap_or_default();
-        let cost = Color::Fixed(LAVENDAR).paint(format!("${cost:.2}"));
+        let config = get_config().cost.clone().unwrap_or_default();
+        let color = config.get_color_or(LAVENDAR);
+        let icon = config.get_icon_or(COST_ICON);
 
-        write!(f, "{COST_ICON} {cost}")
+        let cost = self.total_cost_usd.unwrap_or_default();
+        let cost = Color::Fixed(color).paint(format!("${cost:.2}"));
+
+        write!(f, "{icon} {cost}")
     }
 }
 
@@ -105,7 +113,11 @@ struct Duration {
 
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let duration = Color::Fixed(DODGER_BLUE).paint(match self.total_api_duration_ms {
+        let config = get_config().duration.clone().unwrap_or_default();
+        let color = config.get_color_or(DODGER_BLUE);
+        let icon = config.get_icon_or(DURATION_ICON);
+
+        let duration = Color::Fixed(color).paint(match self.total_api_duration_ms {
             Some(0) | None => "0s".to_string(),
             _ => {
                 let ms = Millisecond::from(core::time::Duration::from_millis(
@@ -121,7 +133,7 @@ impl fmt::Display for Duration {
             }
         });
 
-        write!(f, "{DURATION_ICON} {duration}")
+        write!(f, "{icon} {duration}")
     }
 }
 
@@ -132,8 +144,13 @@ struct Model {
 
 impl fmt::Display for Model {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let display_name = Color::Fixed(ORANGE).paint(&self.display_name);
-        write!(f, "{MODEL_ICON} {display_name}")
+        let config = get_config().model.clone().unwrap_or_default();
+        let color = config.get_color_or(ORANGE);
+        let icon = config.get_icon_or(MODEL_ICON);
+
+        let display_name = Color::Fixed(color).paint(&self.display_name);
+
+        write!(f, "{icon} {display_name}")
     }
 }
 
@@ -144,12 +161,15 @@ struct Percentage {
 
 impl fmt::Display for Percentage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let config = get_config().percentage.clone().unwrap_or_default();
+        let icon = config.get_icon_or(CONTEXT_ICON);
+
         let percent = self.used_percentage.unwrap_or_default() as i32;
         let filled = percent * CONTEXT_BAR_WIDTH as i32 / 100;
         let bar = "▓".repeat(filled as usize) + &"░".repeat(CONTEXT_BAR_WIDTH - filled as usize);
         let context = self.color().paint(format!("{bar} {percent}%"));
 
-        write!(f, "{CONTEXT_ICON} {context}")
+        write!(f, "{icon} {context}")
     }
 }
 
@@ -174,11 +194,15 @@ struct Tokens {
 
 impl fmt::Display for Tokens {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let config = get_config().tokens.clone().unwrap_or_default();
+        let color = config.get_color_or(MAGENTA_PINK);
+        let icon = config.get_icon_or(TOKENS_ICON);
+
         let input = self.total_input_tokens.unwrap_or_default();
         let output = self.total_output_tokens.unwrap_or_default();
-        let tokens = Color::Fixed(MAGENTA_PINK).paint(format!("{input}↑ {output}↓"));
+        let tokens = Color::Fixed(color).paint(format!("{input}↑ {output}↓"));
 
-        write!(f, "{TOKENS_ICON} {tokens}")
+        write!(f, "{icon} {tokens}")
     }
 }
 
